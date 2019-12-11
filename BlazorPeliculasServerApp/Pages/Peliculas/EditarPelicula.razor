@@ -1,0 +1,44 @@
+﻿@page "/peliculas/editar/{PeliculaId:int}"
+@inject PeliculasRepo repo
+@inject NavigationManager navigationManager
+@inject IMostrarMensajes mostrarMensajes
+@attribute [Authorize(Roles = "admin")]
+
+<h3>Editar Película</h3>
+
+@if (pelicula == null)
+{
+    <text>Cargando</text>
+}
+else
+{
+    <FormularioPeliculas Pelicula="pelicula" OnValidSubmit="Editar"
+                         ActoresSeleccionados="actoresSeleccionados"
+                         GenerosNoSeleccionados="generosNoSeleccionados"
+                         GenerosSeleccionados="generosSeleccionados"></FormularioPeliculas>
+}
+
+@code {
+    [Parameter]
+    public int PeliculaId { get; set; }
+    private Pelicula pelicula;
+    private List<Genero> generosSeleccionados = new List<Genero>();
+    private List<Genero> generosNoSeleccionados = new List<Genero>();
+    private List<Persona> actoresSeleccionados = new List<Persona>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var model = await repo.PutGet(PeliculaId);
+        
+        actoresSeleccionados = model.Actores;
+        generosNoSeleccionados = model.GenerosNoSeleccionados;
+        generosSeleccionados = model.GenerosSeleccionados;
+        pelicula = model.Pelicula;
+    }
+
+    private async Task Editar()
+    {
+        await repo.Put(pelicula);
+        navigationManager.NavigateTo($"pelicula/{PeliculaId}");
+    }
+}

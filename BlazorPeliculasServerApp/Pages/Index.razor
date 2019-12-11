@@ -1,5 +1,27 @@
 ﻿@page "/"
+@page "/index"
+@inject PeliculasRepo repo
 
-<h1>Hello, world!</h1>
+<div>
+    <h3>En cartelera</h3>
+    <ListadoPeliculas Peliculas="enCartelera" />
+</div>
 
-Welcome to your new app.
+<div>
+    <h3>Próximos estrenos</h3>
+    <ListadoPeliculas Peliculas="futurosEstrenos" />
+</div>
+
+
+@code{
+    private List<Pelicula> futurosEstrenos;
+    private List<Pelicula> enCartelera;
+
+    protected async override Task OnInitializedAsync()
+    {
+        var homePageDTO = await repo.Get();
+
+        futurosEstrenos = homePageDTO.ProximosEstrenos;
+        enCartelera = homePageDTO.PeliculasEnCartelera;
+    }
+}

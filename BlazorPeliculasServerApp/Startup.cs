@@ -15,6 +15,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using BlazorPeliculasServerApp.Areas.Identity;
 using BlazorPeliculasServerApp.Data;
+using BlazorPeliculasServerApp.Repos;
+using BlazorPeliculasServerApp.Helpers;
+using AutoMapper;
+using Blazor.FileReader;
 
 namespace BlazorPeliculasServerApp
 {
@@ -31,15 +35,30 @@ namespace BlazorPeliculasServerApp
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(
-                    Configuration.GetConnectionString("DefaultConnection")));
-            services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+            services.AddSignalRCore().AddAzureSignalR(Configuration.GetConnectionString("SignalR"));
+            var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
+            optionsBuilder.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"));
+            services.AddTransient(_ => new ApplicationDbContext(optionsBuilder.Options));
+            //services.AddDbContext<ApplicationDbContext>(options =>
+            //    options.UseSqlServer(
+            //        Configuration.GetConnectionString("DefaultConnection")));
+            services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = false)
+                .AddRoles<IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             services.AddRazorPages();
-            services.AddServerSideBlazor();
+            services.AddServerSideBlazor(options => options.DetailedErrors = true)
+                .AddHubOptions(options => options.MaximumReceiveMessageSize = 2 * 1024 * 1024);
             services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<IdentityUser>>();
             services.AddSingleton<WeatherForecastService>();
+            services.AddTransient<UsuariosRepo>();
+            services.AddTransient<GenerosRepo>();
+            services.AddTransient<PersonasRepo>();
+            services.AddTransient<PeliculasRepo>();
+            services.AddTransient<VotosRepo>();
+            services.AddScoped<IMostrarMensajes, MostrarMensajes>();
+            services.AddScoped<IFileStore, AzStorageFileStore>();
+            services.AddAutoMapper(typeof(Startup));
+            services.AddFileReaderService(options => options.InitializeOnFirstCall = true);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

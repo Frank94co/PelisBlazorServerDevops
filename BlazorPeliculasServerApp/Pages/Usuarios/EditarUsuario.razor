@@ -1,0 +1,66 @@
+﻿@page "/usuarios/editar/{UserId}"
+@inject UsuariosRepo repo
+@inject IMostrarMensajes mostrarMensajes
+
+<h3>Editar Usuario</h3>
+
+<div class="form-inline">
+    <select class="form-control mb-2 mr-sm-2" @bind="rolSeleccionado">
+        <option value="0">---Seleccione un rol---</option>
+        @foreach (var rol in roles)
+        {
+            <option value="@rol.Nombre">@rol.Nombre</option>
+        }
+    </select>
+
+    <button class="btn btn-info mb-2 mr-sm-2" @onclick="AsignarRol">Asignar rol</button>
+    <button class="btn btn-danger mb-2 mr-sm-2" @onclick="RemoverRol">Remover rol</button>
+</div>
+
+@code {
+    [Parameter]
+    public string UserID { get; set; }
+    private List<RolDTO> roles = new List<RolDTO>();
+    private string rolSeleccionado = "0";
+
+    protected async override Task OnInitializedAsync()
+    {
+        roles = await repo.GetRoles();
+    }
+
+    private async Task AsignarRol()
+    {
+        var valido = await ValidarEditarRol();
+        if (!valido)
+        {
+            return;
+        }
+
+        var rolDTO = new EditarRolDTO() { RoleId = rolSeleccionado, UserId = UserID };
+        await repo.AsignarRolUsuario(rolDTO);
+        await mostrarMensajes.MostrarMensajeExito("Operación realizada");
+    }
+
+    private async Task RemoverRol()
+    {
+        var valido = await ValidarEditarRol();
+        if (!valido)
+        {
+            return;
+        }
+
+        var rolDTO = new EditarRolDTO() { RoleId = rolSeleccionado, UserId = UserID };
+        await repo.RemoverUsuarioRol(rolDTO);
+        await mostrarMensajes.MostrarMensajeExito("Operación realizada");
+    }
+
+    private async Task<bool> ValidarEditarRol()
+    {
+        if (rolSeleccionado == "0")
+        {
+            await mostrarMensajes.MostrarMensajeError("Debe seleccionar un rol");
+            return false;
+        }
+        return true;
+    }
+}

@@ -42,7 +42,7 @@ namespace BlazorPeliculasServerApp.Data
             //modelBuilder.Entity<IdentityUserRole<string>>().HasData(
             //    new IdentityUserRole<string>() { RoleId = roleAdminID, UserId = usuarioAdminID }
             //    );
-            modelBuilder.Entity<IdentityRole>().HasData(roleAdmin);
+            //modelBuilder.Entity<IdentityRole>().HasData(roleAdmin);
 
             base.OnModelCreating(modelBuilder);
         }

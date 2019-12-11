@@ -1,0 +1,53 @@
+﻿@page "/persona/{PersonaId:int}"
+@page "/persona/{PersonaId:int}/{NombrePersona}"
+@inject PersonasRepo repo
+@inject NavigationManager navigationManager
+@inject IMostrarMensajes mostrarMensajes
+
+@if (model == null)
+{
+    <text>Cargando...</text>
+}
+else
+{
+    <div>
+        <h2>@model.Persona.Nombre</h2>
+        <p><b>Fecha de nacimiento: </b>@model.Persona.FechaNacimiento.Value.ToString("dd MMM yyyy")</p>
+    </div>
+    <img width="500" src="@model.Persona.Foto" />
+    <div style="margin-top: 10px;">
+        <h3>Resumen</h3>
+        <div>
+            <MostrarMarkdown ContenidoMarkdown="@model.Persona.Biografia"></MostrarMarkdown>
+        </div>
+    </div>
+    <div style="margin-top: 10px">
+        <h3>Películas</h3>
+        <div style="display:flex; flex-direction: column">
+            @foreach (var pelicula in model.Peliculas)
+            {
+                <div style="margin-bottom: 2px;">
+                    <img style="width: 50px" src="@pelicula.Poster" />
+                    <span style="display: inline-block; width: 200px">
+                        <a href="/persona/@pelicula.Id/@pelicula.Titulo.Replace(" ", "-")">@pelicula.Titulo</a>
+                    </span>
+                </div>
+            }
+        </div>
+    </div>
+
+}
+
+@code {
+    [Parameter]
+    public int PersonaId { get; set; }
+    [Parameter]
+    public string NombrePersona { get; set; }
+    private PersonaVisualizarDTO model;
+    private RenderFragment<Pelicula> enlaceGenero = (pelicula) =>@<a href="pelicula/@pelicula.Id">@pelicula.Titulo</a>;
+
+    protected async override Task OnInitializedAsync()
+    {
+        var model = await repo.GetPut(PersonaId);
+    }
+}

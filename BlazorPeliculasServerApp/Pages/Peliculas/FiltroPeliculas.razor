@@ -1,0 +1,190 @@
+﻿@page "/peliculas/buscar"
+@inject PeliculasRepo repo
+@inject GenerosRepo repoGeneros
+@inject NavigationManager navigationManager
+
+<h3>Filtro de películas</h3>
+
+<div class="form-inline">
+    <div class="form-group mb-2">
+        <label for="titulo" class="sr-only">Título</label>
+        <input @bind-value="titulo" @bind-value:event="oninput"
+               @onkeypress="@((KeyboardEventArgs e) => TituloKeyPress(e))"
+               type="text" class="form-control" id="titulo" placeholder="Título de la película" />
+    </div>
+    <div class="form-group mx-sm-3 mb-2">
+        <select class="form-control" style="width:160px;" @bind="generoSeleccionado">
+            <option value="0">--Seleccione un género--</option>
+            @foreach (var item in generos)
+            {
+                <option value="@item.Id">@item.Nombre</option>
+            }
+        </select>
+    </div>
+    <div class="form-group mx-sm-3 mb-2">
+        <input type="checkbox" class="form-check-input" id="estrenos" @bind="futurosEstrenos" />
+        <label class="form-check-label" for="estrenos">Futuros estrenos</label>
+    </div>
+    <div class="form-group mx-sm-3 mb-2">
+        <input type="checkbox" class="form-check-input" id="cartelera" @bind="enCartelera" />
+        <label class="form-check-label" for="cartelera">En cartelera</label>
+    </div>
+    <div class="form-group mx-sm-3 mb-2">
+        <input type="checkbox" class="form-check-input" id="masVotadas" @bind="masVotadas" />
+        <label class="form-check-label" for="estrenos">Más votadas</label>
+    </div>
+    <button type="button" class="btn btn-primary mb-2 mx-sm-3" @onclick="CargarNuevasPeliculas">
+        Filtrar
+    </button>
+    <button type="button" class="btn btn-danger mb-2 mx-sm-3" @onclick="LimpiarOnClick">
+        Limpiar
+    </button>
+</div>
+
+<ListadoPeliculas Peliculas="peliculas"/>
+<Paginacion PaginaActual="paginaActual" PaginasTotales="paginasTotales" PaginaSeleccionada="PaginaSelecionada">
+</Paginacion>
+
+@code {
+    string titulo = "";
+    string generoSeleccionado = "0";
+    private List<Pelicula> peliculas = new List<Pelicula>();
+    private List<Genero> generos = new List<Genero>();
+    private bool futurosEstrenos = false;
+    private bool enCartelera = false;
+    private bool masVotadas = false;
+    private Dictionary<string, string> queryStringDict = new Dictionary<string, string>();
+    private int paginaActual = 1;
+    private int paginasTotales;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerGeneros();
+        var url = navigationManager.Uri;
+        var queryStr = navigationManager.GetQueryString(url);
+        if (queryStr == null)
+        {
+            await RealizarBusqueda();
+        }
+        else
+        {
+            queryStringDict = queryStr;
+            LlenarCampos();
+            await RealizarBusqueda();
+        }
+    }
+
+    private void LlenarCampos()
+    {
+        if (queryStringDict.ContainsKey("generoid"))
+        {
+            generoSeleccionado = queryStringDict["generoid"];
+        }
+
+        if (queryStringDict.ContainsKey("titulo"))
+        {
+            titulo = queryStringDict["titulo"];
+        }
+
+        if (queryStringDict.ContainsKey("encartelera"))
+        {
+            bool.TryParse(queryStringDict["encartelera"], out enCartelera);
+        }
+
+        if (queryStringDict.ContainsKey("estrenos"))
+        {
+            bool.TryParse(queryStringDict["estrenos"], out futurosEstrenos);
+        }
+
+        if (queryStringDict.ContainsKey("masvotadas"))
+        {
+            bool.TryParse(queryStringDict["masvotadas"], out masVotadas);
+        }
+
+        if (queryStringDict.ContainsKey("pagina"))
+        {
+            int.TryParse(queryStringDict["pagina"], out paginaActual);
+        }
+
+    }
+
+    private async Task ObtenerGeneros()
+    {
+        generos = await repoGeneros.Get();
+    }
+
+    private async Task TituloKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await CargarNuevasPeliculas();
+        }
+    }
+
+    private async Task CargarNuevasPeliculas()
+    {
+        var queryString = GenerarQueryString();
+        navigationManager.NavigateTo("/peliculas/buscar?" + queryString);
+        await RealizarBusqueda();
+
+    }
+
+    private async Task RealizarBusqueda()
+    {
+        var parametrosBusqueda = GenerarParametrosBusqueda();
+        var pagedResponse = await repo.Get(parametrosBusqueda);
+        paginasTotales = pagedResponse.TotalPages;
+        peliculas = pagedResponse.Records;
+    }
+
+    private ParametrosBusquedaPeliculas GenerarParametrosBusqueda()
+    {
+        var respuesta = new ParametrosBusquedaPeliculas();
+        respuesta.GeneroID = int.Parse(generoSeleccionado);
+        respuesta.Titulo = titulo;
+        respuesta.EnCartelera = enCartelera;
+        respuesta.Estrenos = futurosEstrenos;
+        respuesta.MasVotadas = masVotadas;
+        respuesta.Pagina = paginaActual;
+        return respuesta;
+    }
+
+    private string GenerarQueryString()
+    {
+        if (queryStringDict == null)
+        {
+            queryStringDict = new Dictionary<string, string>();
+        }
+        queryStringDict["generoid"] = generoSeleccionado;
+        queryStringDict["titulo"] = titulo;
+        queryStringDict["encartelera"] = enCartelera.ToString();
+        queryStringDict["estrenos"] = futurosEstrenos.ToString();
+        queryStringDict["masvotadas"] = masVotadas.ToString();
+        queryStringDict["pagina"] = paginaActual.ToString();
+
+        var valoresDefault = new List<string>() { "false", "", "0" };
+
+        //generoid=7&titulo=spider...
+        return string.Join("&", queryStringDict
+            .Where(x => !valoresDefault.Contains(x.Value.ToLower()))
+            .Select(x => $"{x.Key}={System.Web.HttpUtility.UrlEncode(x.Value)}")
+            .ToArray());
+    }
+
+    private async Task PaginaSelecionada(int pagina)
+    {
+        paginaActual = pagina;
+        await CargarNuevasPeliculas();
+    }
+
+    private async Task LimpiarOnClick()
+    {
+        titulo = "";
+        generoSeleccionado = "0";
+        futurosEstrenos = false;
+        enCartelera = false;
+        masVotadas = false;
+        paginaActual = 1;
+        await CargarNuevasPeliculas();
+    }
+}
